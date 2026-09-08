@@ -19,6 +19,7 @@ from breviabook.llm.providers.litellm_base import LiteLLMProvider
 from breviabook.llm.providers.ollama import OllamaProvider
 from breviabook.llm.providers.openai import OpenAIProvider
 from breviabook.llm.providers.openrouter import OpenRouterProvider
+from breviabook.llm.reasoning import validate_effort
 from breviabook.utils.security import assert_endpoint_allowed, is_local_host
 
 _SUPPORTED = ("ollama", "openai", "gemini", "openrouter")
@@ -32,10 +33,20 @@ _ENV_VAR = {
 # Providers whose models "think" by default and bill that reasoning as output tokens. For
 # BreviaBook's rewriting tasks (condense/translate) thinking adds cost, not quality, so we turn it
 # off by default. Users can pass --reasoning-effort auto to restore the provider's native mode.
+# A model that refuses "disable" outright is handled at call time, not here: see
+# breviabook.llm.reasoning — the accepted budgets differ per model release, so the engine asks
+# for none and settles for the cheapest the model allows rather than consulting a stale table.
 _THINKING_ON_BY_DEFAULT = ("gemini",)
 
 
 def _resolve_reasoning_effort(provider_key: str, requested: str | None) -> str | None:
+    """The thinking budget to send by default, or ``None`` to send none.
+
+    Raises:
+        ValueError: if ``requested`` is not one of the accepted values.
+    """
+    if requested is not None:
+        validate_effort(requested)
     if requested == "auto":
         return None  # honor the provider's native default (e.g. Gemini dynamic thinking)
     if requested:
@@ -85,8 +96,15 @@ def get_provider(
     thinking is wasted cost for condensation/translation. Applied only to litellm-backed
     providers and ignored by providers that do not support it.
 
+    The default is a request, not an assumption: a model that rejects ``"disable"`` (Gemini
+    3.8 dropped that thinking level) makes the provider fall back to the cheapest budget it
+    does accept and record a warning, instead of failing the run. An explicit
+    ``reasoning_effort`` is still negotiated the same way if the model refuses it — what it
+    changes is that the choice was the caller's.
+
     Raises:
-        ValueError: for an unknown provider or a missing required API key.
+        ValueError: for an unknown provider, a missing required API key, or an invalid
+            ``reasoning_effort``.
     """
     key = name.lower()
     provider = _build(key, settings, api_endpoint)

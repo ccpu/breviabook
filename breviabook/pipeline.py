@@ -73,6 +73,17 @@ def _noop(_: str) -> None:
     pass
 
 
+def _provider_warnings(provider: LLMProvider) -> list[str]:
+    """Non-fatal notes the provider collected mid-run (e.g. a thinking budget it had to
+    renegotiate — see :mod:`breviabook.llm.reasoning`).
+
+    Read with ``getattr`` because ``warnings`` is an optional provider capability, like
+    ``generate_with_image``: it is not on the :class:`~breviabook.llm.base.LLMProvider`
+    Protocol, and the pipeline is routinely handed test doubles that do not carry it.
+    """
+    return list(getattr(provider, "warnings", ()))
+
+
 @dataclass
 class CondenseResult:
     output_files: list[Path]
@@ -338,7 +349,7 @@ async def condense_book(
         output_files=output_files,
         input_tokens=state.input_tokens,
         output_tokens=_document_tokens(final_doc),
-        warnings=state.warnings,
+        warnings=[*state.warnings, *_provider_warnings(provider)],
         chunks_total=state.chunks_total,
         chunks_reused=state.chunks_reused,
         usage=provider.usage,

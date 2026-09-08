@@ -151,7 +151,8 @@ breviabook condense INPUT.{epub,pdf} [options]
   --glossary        glossary JSON {source_term: target_term}
   --rank-images     use a vision model to score/drop images
   --reasoning-effort  auto | disable | low | medium | high  (thinking budget; Gemini defaults
-                      to "disable" to save cost — pass "auto" to keep native thinking)
+                      to "disable" to save cost — a model that refuses it falls back to the
+                      cheapest it allows, with a warning. "auto" keeps native thinking)
   --manual-toc      manual TOC JSON for PDFs without an outline
   --out             output directory                              (default: ./output)
   --resume          resume from checkpoint
@@ -186,6 +187,22 @@ providers that have it on (Gemini). To restore a model's native thinking, pass
 |---|---|---|---|
 | thinking on (`--reasoning-effort auto`) | $0.78 | 243k | excellent |
 | **default (thinking disabled)** | **$0.22** | 55k | **excellent (identical)** |
+
+**Models that refuse "no thinking".** Not every reasoning model lets you turn it off:
+`gemini-3.8-flash` dropped the thinking level that `disable` maps to and rejects it with a
+400. The default is a request, not an assumption — when a model refuses, the run falls back
+to the cheapest budget that model does accept, warns once, and carries on:
+
+```
+⚠ gemini: this model does not support reasoning effort 'disable'; the run fell back
+  to 'low', which costs more than no thinking. Pass --reasoning-effort to choose another.
+```
+
+There is no list of such models in the engine, deliberately: which budgets a model accepts
+changes with each release, so a table would be stale within weeks and would fail on exactly
+the models nobody had added to it yet. The engine asks and adapts instead. On the run above,
+`low` on `gemini-3.8-flash` spent no visible reasoning tokens, so the fallback cost the same
+as `disable` would have — but that is a property of that model, not a guarantee.
 
 Estimate first with `--dry-run` (no LLM call). Note the dry-run assumes no reasoning tokens —
 which matches the default; if you re-enable thinking with `--reasoning-effort auto`, the real

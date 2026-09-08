@@ -86,6 +86,12 @@ def test_openai_has_no_default_reasoning_effort() -> None:
     assert "reasoning_effort" not in provider.extra_opts  # type: ignore[attr-defined]
 
 
+def test_invalid_reasoning_effort_is_rejected_before_the_run_starts() -> None:
+    settings = Settings(gemini_api_key="g")
+    with pytest.raises(ValueError, match="Invalid reasoning effort"):
+        get_provider("gemini", settings, reasoning_effort="minimal")
+
+
 _FAKE_KEY = "sk-fake-key-must-never-leak"
 
 

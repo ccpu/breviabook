@@ -7,6 +7,19 @@ All notable changes to BreviaBook are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **The default thinking budget now negotiates instead of assuming.** The engine asks
+  reasoning models for no thinking (`reasoning_effort="disable"`), which litellm sends
+  as thinking level `MINIMAL` — and `gemini-3.8-flash` rejects that level outright with
+  a 400, killing the run at its first LLM call, after parsing, with no output written.
+  A run now falls back to the cheapest budget the model *does* accept, warns once
+  (surfaced in the CLI's warnings block), and completes. Deliberately no table of model
+  names: which budgets a model accepts changes with each release, so a hardcoded list
+  would be stale within weeks and would fail closed on the models nobody had added to it
+  yet. The engine asks and adapts — one rejected request, which bills nothing, retunes
+  the whole run. See `breviabook/llm/reasoning.py`.
+- **`--reasoning-effort` is validated up front.** An unrecognized value used to be
+  forwarded to the provider and fail mid-run; it is now rejected before the first call,
+  naming the accepted values.
 - **`breviabook.condense.calibration` — the length correction is now per model.**
   `CONDENSE_ASK_FACTOR = 0.85` was measured on Gemini Flash, which overshoots, and
   then applied to every model. A model that already lands on target got the

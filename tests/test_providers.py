@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from breviabook.llm.key_pool import KeyPool
 from breviabook.llm.providers.gemini import GeminiProvider
 from breviabook.llm.providers.openai import OpenAIProvider
@@ -93,3 +95,108 @@ async def test_provider_rotates_key_on_rate_limit() -> None:
     out = await provider.generate([{"role": "user", "content": "x"}], "gpt-4o")
     assert out == "recovered"
     assert keys_used == ["k1", "k2"]  # rotated to the second key after the rate-limit error
+
+
+# --------------------------------------------------------------------------- #
+# Thinking-budget renegotiation (breviabook.llm.reasoning)
+#
+# The engine asks reasoning models for no thinking; some models refuse that level
+# outright (Gemini 3.8 dropped MINIMAL). A refusal must cost the run a warning, not
+# the run itself. Test doubles are named after litellm's exceptions because the
+# matcher works off the class-name MRO, not an import.
+# --------------------------------------------------------------------------- #
+
+
+class BadRequestError(Exception):
+    pass
+
+
+def _refuses(*efforts: str, response: str = "ok") -> tuple[Any, list[Any]]:
+    """A completer that 400s while reasoning_effort is one of ``efforts``."""
+    seen: list[Any] = []
+
+    async def completer(**kwargs: Any) -> dict[str, Any]:
+        seen.append(kwargs.get("reasoning_effort", "<unset>"))
+        if kwargs.get("reasoning_effort") in efforts:
+            raise BadRequestError(
+                "GeminiException BadRequestError - Thinking level MINIMAL is not "
+                "supported for this model. Please retry with other thinking level."
+            )
+        return _response(response)
+
+    return completer, seen
+
+
+async def test_refused_thinking_budget_falls_back_to_the_cheapest_allowed() -> None:
+    completer, seen = _refuses("disable")
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+    provider.extra_opts["reasoning_effort"] = "disable"
+
+    out = await provider.generate([{"role": "user", "content": "x"}], "gemini-3.8-flash")
+
+    assert out == "ok"
+    assert seen == ["disable", "low"]
+    # The whole run is retuned by one rejection, not just the call that hit it.
+    assert provider.extra_opts["reasoning_effort"] == "low"
+    assert len(provider.warnings) == 1
+    assert "does not support reasoning effort 'disable'" in provider.warnings[0]
+
+
+async def test_model_refusing_every_reduced_budget_drops_the_parameter() -> None:
+    completer, seen = _refuses("disable", "low")
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+    provider.extra_opts["reasoning_effort"] = "disable"
+
+    out = await provider.generate([{"role": "user", "content": "x"}], "gemini-3.8-flash")
+
+    assert out == "ok"
+    assert seen == ["disable", "low", "<unset>"]
+    assert "reasoning_effort" not in provider.extra_opts
+    assert "refuses every reduced thinking budget" in provider.warnings[-1]
+
+
+async def test_warning_is_recorded_once_across_calls() -> None:
+    completer, _ = _refuses("disable")
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+    provider.extra_opts["reasoning_effort"] = "disable"
+
+    for _ in range(3):
+        await provider.generate([{"role": "user", "content": "x"}], "gemini-3.8-flash")
+
+    assert len(provider.warnings) == 1
+
+
+async def test_unrelated_bad_request_still_propagates() -> None:
+    async def completer(**kwargs: Any) -> dict[str, Any]:
+        raise BadRequestError("GeminiException BadRequestError - context length exceeded")
+
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+    provider.extra_opts["reasoning_effort"] = "disable"
+
+    with pytest.raises(BadRequestError):
+        await provider.generate([{"role": "user", "content": "x"}], "gemini-3.8-flash")
+    assert provider.extra_opts["reasoning_effort"] == "disable"
+    assert provider.warnings == []
+
+
+async def test_per_call_effort_is_the_callers_business_and_is_not_retuned() -> None:
+    completer, seen = _refuses("disable")
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+
+    with pytest.raises(BadRequestError):
+        await provider.generate(
+            [{"role": "user", "content": "x"}], "gemini-3.8-flash", reasoning_effort="disable"
+        )
+    assert seen == ["disable"]
+    assert provider.warnings == []
+
+
+async def test_provider_without_a_budget_is_untouched() -> None:
+    completer, seen = _refuses("disable")
+    provider = GeminiProvider(KeyPool(["k1"]), completer=completer)
+
+    out = await provider.generate([{"role": "user", "content": "x"}], "gemini-2.5-flash")
+
+    assert out == "ok"
+    assert seen == ["<unset>"]
+    assert provider.warnings == []

@@ -206,7 +206,9 @@ def condense(
         str | None,
         typer.Option(
             help="Thinking budget for reasoning models: auto|disable|low|medium|high "
-            "(Gemini defaults to 'disable' to avoid wasted cost; pass 'auto' to keep thinking)"
+            "(Gemini defaults to 'disable' to avoid wasted cost; a model that refuses it "
+            "falls back to the cheapest budget it allows and warns. Pass 'auto' to keep "
+            "the model's own thinking)"
         ),
     ] = None,
     dry_run: Annotated[bool, typer.Option(help="Estimate tokens/cost only, no LLM call")] = False,
@@ -341,7 +343,9 @@ def translate(
         str | None,
         typer.Option(
             help="Thinking budget for reasoning models: auto|disable|low|medium|high "
-            "(Gemini defaults to 'disable' to avoid wasted cost; pass 'auto' to keep thinking)"
+            "(Gemini defaults to 'disable' to avoid wasted cost; a model that refuses it "
+            "falls back to the cheapest budget it allows and warns. Pass 'auto' to keep "
+            "the model's own thinking)"
         ),
     ] = None,
     rank_images: Annotated[bool, typer.Option(help="Use a vision model to rank images")] = False,
