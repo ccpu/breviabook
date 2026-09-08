@@ -6,6 +6,13 @@ All notable changes to BreviaBook are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-08
+
+Condensation stops correcting every model for one model's bias, and the engine stops
+assuming a model will accept the settings it asks for. Both are the same mistake at
+different layers: a number measured once, applied everywhere, failing silently on the
+cases nobody measured.
+
 ### Added
 - **The default thinking budget now negotiates instead of assuming.** The engine asks
   reasoning models for no thinking (`reasoning_effort="disable"`), which litellm sends
@@ -265,6 +272,7 @@ preserving code, tables, and meaningful figures, with optional same-pass transla
 - `--dry-run` token/page/compression/cost estimate; per-run usage report; compression and
   approximate page counts; `--resume` from a JSONL checkpoint.
 
+[0.6.0]: https://github.com/willywg/breviabook/releases/tag/v0.6.0
 [0.5.0]: https://github.com/willywg/breviabook/releases/tag/v0.5.0
 [0.4.0]: https://github.com/willywg/breviabook/releases/tag/v0.4.0
 [0.3.0]: https://github.com/willywg/breviabook/releases/tag/v0.3.0
