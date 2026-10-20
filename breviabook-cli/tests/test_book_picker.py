@@ -22,7 +22,7 @@ class BookPickerTests(unittest.TestCase):
         self.output.__enter__()
         self.addCleanup(self.output.__exit__, None, None, None)
 
-    def test_checkbox_preselects_every_book_and_returns_selection_in_book_order(self):
+    def test_checkbox_starts_unchecked_and_returns_selection_in_book_order(self):
         checkbox = MagicMock()
         checkbox.return_value.unsafe_ask.return_value = [2, 0]
         questionary = SimpleNamespace(
@@ -37,7 +37,7 @@ class BookPickerTests(unittest.TestCase):
             self.assertEqual(select_books(self.labels), [0, 2])
         choices = checkbox.call_args.kwargs["choices"]
         self.assertEqual([choice.title for choice in choices], self.labels)
-        self.assertTrue(all(choice.checked for choice in choices))
+        self.assertFalse(any(choice.checked for choice in choices))
         self.assertEqual([choice.value for choice in choices], [0, 1, 2])
 
     def test_checkbox_allows_none_for_rescan_and_cancel_for_quit(self):
@@ -52,7 +52,7 @@ class BookPickerTests(unittest.TestCase):
             questionary.checkbox.return_value.unsafe_ask.return_value = None
             self.assertIsNone(select_books(self.labels))
 
-    def test_checkbox_ctrl_c_aborts_instead_of_submitting_default_all(self):
+    def test_checkbox_ctrl_c_aborts_without_submitting(self):
         questionary = MagicMock()
         questionary.checkbox.return_value.unsafe_ask.side_effect = KeyboardInterrupt
         with (
@@ -72,9 +72,9 @@ class BookPickerTests(unittest.TestCase):
         ):
             select_books(self.labels)
 
-    def test_redirected_input_defaults_to_all_and_supports_subsets(self):
+    def test_redirected_input_defaults_to_none_and_supports_explicit_selections(self):
         for answer, expected in (
-            ("", [0, 1, 2]),
+            ("", []),
             ("all", [0, 1, 2]),
             ("3,1-2,1", [0, 1, 2]),
             ("1,3", [0, 2]),

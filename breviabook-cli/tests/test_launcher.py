@@ -631,13 +631,13 @@ class LauncherTests(unittest.TestCase):
         self.assertEqual(run.call_count, 1)
         self.assertEqual(load_job(discover_books(self.input)[0], self.output).status, "Completed")
 
-    def test_batch_enter_selects_all_and_reuses_provider_key_and_runtime(self):
+    def test_batch_requires_explicit_all_and_reuses_provider_key_and_runtime(self):
         self.book("first.epub")
         self.book("second.pdf")
         runner = MagicMock()
         runner.run.side_effect = self.render
         with (
-            patch("builtins.input", side_effect=["", "1", "example/model", "q"]),
+            patch("builtins.input", side_effect=["", "all", "1", "example/model", "q"]),
             patch("app.select_runner", return_value=runner) as runtime,
             patch("app.credentials", return_value="batch-secret") as key,
         ):

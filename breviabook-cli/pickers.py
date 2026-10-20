@@ -58,14 +58,14 @@ def choose(prompt: str, labels: list[str], *, default: int | None = None) -> int
 
 
 def select_many(prompt: str, labels: list[str]) -> list[int] | None:
-    """Return checked indices; all start checked, empty means rescan, None means quit."""
+    """Return checked indices; none start checked, empty means rescan, None means quit."""
     if _interactive():
         questionary = _questionary()
-        print("\nAll books are selected. Clear all and submit to rescan input.")
+        print("\nSelect books with Space, then Enter. Submit an empty selection to rescan input.")
         answer = questionary.checkbox(
             prompt,
             choices=[
-                questionary.Choice(label, value=index, checked=True)
+                questionary.Choice(label, value=index, checked=False)
                 for index, label in enumerate(labels)
             ],
             instruction="(arrows move, space toggle, a all, i invert, enter queue, Ctrl+C quit)",
@@ -77,18 +77,20 @@ def select_many(prompt: str, labels: list[str]) -> list[int] | None:
             raise ValueError("Invalid book selection.")
         return [index for index in range(len(labels)) if index in answer]
 
-    print(f"\n{prompt} (all selected by default)")
+    print(f"\n{prompt} (none selected by default)")
     for index, label in enumerate(labels, 1):
-        print(f"  [x] {index}. {label}")
+        print(f"  [ ] {index}. {label}")
     while True:
         answer = (
-            input("Enter = all; numbers/ranges (1,3-5); r = rescan; q = quit: ").strip().lower()
+            input("Numbers/ranges (1,3-5); all = select all; Enter/r = rescan; q = quit: ")
+            .strip()
+            .lower()
         )
         if answer == "q":
             return None
-        if answer == "r":
+        if not answer or answer == "r":
             return []
-        if not answer or answer == "all":
+        if answer == "all":
             return list(range(len(labels)))
         try:
             chosen: set[int] = set()
@@ -105,4 +107,4 @@ def select_many(prompt: str, labels: list[str]) -> list[int] | None:
                 chosen.update(range(start - 1, end))
             return sorted(chosen)
         except ValueError:
-            print("Enter valid book numbers/ranges, Enter for all, r, or q.")
+            print("Enter valid book numbers/ranges, all, Enter to rescan, or q.")

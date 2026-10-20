@@ -24,7 +24,7 @@ checkbox UI; Docker mode needs Compose, while local mode needs the engine's depe
 
 3. Drop `.epub` or `.pdf` books into `input`, using any filenames or subfolders.
 4. Press Enter to rescan if the folder was empty.
-5. Select books with the checkboxes; **all books are checked by default**. Use arrows to
+5. Select books with the checkboxes; **no books are checked by default**. Use arrows to
    move, Space to toggle a book, **a** to toggle all, **i** to invert, and Enter to queue.
 6. Select **Docker (recommended)** or **Local Python** if Docker is available; otherwise
    the launcher selects local Python automatically.
@@ -34,7 +34,7 @@ checkbox UI; Docker mode needs Compose, while local mode needs the engine's depe
 
 Books run one at a time. Runtime and provider choices are reused across the queue, and each
 provider's key is requested once per batch and kept in memory. Interrupted books keep their
-own saved settings; completed books still ask redo/cancel. Clear all checkboxes and submit
+own saved settings; completed books still ask redo/cancel. Submit with no books checked
 to rescan input, or press Ctrl+C to quit.
 
 All single-choice menus use the same arrow-key picker: **What next?**, provider, runtime,
@@ -154,5 +154,5 @@ Changing the provider or model while resuming also starts a separate attempt.
 - Local mode has access to your host filesystem; Docker mode retains the existing Compose restrictions.
 - Existing Docker setup and Ollama endpoint details are in [the Docker guide](../docs/docker.md).
 - UI changes apply on the next launch; an already-running container keeps its current display.
-- When input/output is redirected, arrow-key checkboxes are replaced with a text picker; Enter still selects all, and comma-separated numbers/ranges select a subset.
+- When input/output is redirected, use comma-separated numbers/ranges or type `all` to select books; Enter with no selection rescans input.
 - Ctrl+C stops the current job and cancels the remaining queue; saved checkpoints can be resumed later.
