@@ -4,6 +4,10 @@ Build the CLI and PDF libraries inside Docker, read books from `input`, and save
 `output` on your machine. Run commands from the repository root in PowerShell or Bash/sh;
 Docker and Ollama commands work in both, with shell-specific setup shown separately.
 
+For book selection, hidden API-key prompts, and automatic resume detection, use the
+[interactive Python launcher](../breviabook-cli/README.md): `python breviabook-cli`.
+It recommends Docker when available and falls back to local Python when Docker is unavailable.
+
 ## Requirements
 
 **Your host machine → Docker and Ollama; terminal → any directory.**
@@ -171,4 +175,5 @@ Put glossary or manual TOC JSON files in `input` and refer to them using `/input
 - Processing is limited to 4 GB RAM, 2 CPUs, 256 processes, and 256 MB temporary storage; adjust `compose.yaml` for large books. The host Ollama model has separate resource requirements.
 - Builds use the checked-in lockfile with `uv sync --locked`; upgrading vulnerable dependencies requires updating that lockfile and rebuilding.
 - Use an up-to-date Docker Desktop; container isolation also depends on your Docker engine and host security.
-- If Docker reports `docker endpoint for "default" not found` during builds, temporarily set `$env:DOCKER_BUILDKIT = "0"` in PowerShell or `export DOCKER_BUILDKIT=0` in Bash/sh and retry `docker compose build`; repair the Docker contexts or update Docker Desktop before switching back to BuildKit.
+- The interactive launcher detects a missing Buildx endpoint and uses the legacy builder for that run before starting a fresh container for the selected book; it preserves global Docker settings.
+- For manual builds reporting `docker endpoint for "default" not found`, temporarily set `DOCKER_BUILDKIT=0` and `COMPOSE_DOCKER_CLI_BUILD=0` in your shell and retry `docker compose build`; repair Docker contexts or update Docker Desktop before switching back to BuildKit.
